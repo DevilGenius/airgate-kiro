@@ -42,6 +42,11 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Embed web dist
+        run: |
+          rm -rf backend/internal/gateway/webdist
+          cp -r web/dist backend/internal/gateway/webdist
+
       - name: Run tests
         run: cd backend && go test ./...
 
