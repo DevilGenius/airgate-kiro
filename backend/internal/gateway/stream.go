@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	sdk "github.com/DouDOU-start/airgate-sdk"
 	"github.com/google/uuid"
@@ -155,8 +156,8 @@ func (c *SSEConverter) processTextWithThinking(text string) {
 			}
 
 			// 可能标签跨 chunk 边界，保留末尾
-			if len(remaining) > len("</thinking>") {
-				safe := len(remaining) - len("</thinking>") - 2
+			if len(remaining) > len("</thinking>")+2 {
+				safe := runeAlignBack(remaining, len(remaining)-len("</thinking>")-2)
 				if safe > 0 {
 					c.emitThinkingDelta(remaining[:safe])
 					c.thinkingBuf = remaining[safe:]
@@ -189,10 +190,14 @@ func (c *SSEConverter) processTextWithThinking(text string) {
 
 		// 没有 thinking 标签
 		if len(remaining) > len("<thinking>") {
-			safe := len(remaining) - len("<thinking>")
-			c.ensureTextBlock()
-			c.emitTextDelta(remaining[:safe])
-			c.thinkingBuf = remaining[safe:]
+			safe := runeAlignBack(remaining, len(remaining)-len("<thinking>"))
+			if safe > 0 {
+				c.ensureTextBlock()
+				c.emitTextDelta(remaining[:safe])
+				c.thinkingBuf = remaining[safe:]
+			} else {
+				c.thinkingBuf = remaining
+			}
 		} else {
 			c.thinkingBuf = remaining
 		}
@@ -519,6 +524,14 @@ func isQuoteChar(c byte) bool {
 func jsonString(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
+}
+
+// runeAlignBack returns the largest position <= pos that is a UTF-8 rune boundary.
+func runeAlignBack(s string, pos int) int {
+	for pos > 0 && !utf8.RuneStart(s[pos]) {
+		pos--
+	}
+	return pos
 }
 
 func estimateTokens(text string) int {

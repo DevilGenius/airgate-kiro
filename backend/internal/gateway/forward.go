@@ -80,10 +80,9 @@ func (g *KiroGateway) doForward(ctx context.Context, req *sdk.ForwardRequest, lo
 	cfg := convertConfig{
 		ProfileArn: req.Account.Credentials["profile_arn"],
 	}
-	kiroBody, convCtx, err := convertRequest(req.Body, req.Account, cfg)
+	kiroBody, convCtx, err := convertRequest(req.Body, req.Account, cfg, logger)
 	if err != nil {
 		logger.Warn("convert request failed", "error", err)
-		// 模型不支持等客户端错误
 		errBody, _ := json.Marshal(map[string]any{
 			"type": "error",
 			"error": map[string]string{
@@ -117,7 +116,18 @@ func (g *KiroGateway) doForward(ctx context.Context, req *sdk.ForwardRequest, lo
 	}
 	httpReq.Header = headers
 
-	logger.Info("forwarding to kiro", "url", url, "model", convCtx.KiroModelID)
+	logger.Info("forwarding to kiro", "url", url, "model", convCtx.KiroModelID,
+		"body_bytes", len(kiroBody),
+		"body_mb", fmt.Sprintf("%.2f", float64(len(kiroBody))/1024/1024),
+	)
+	logger.Debug("kiro_request_headers",
+		"content_type", httpReq.Header.Get("Content-Type"),
+		"x_amzn_kiro_agent_mode", httpReq.Header.Get("x-amzn-kiro-agent-mode"),
+		"x_amz_user_agent", httpReq.Header.Get("x-amz-user-agent"),
+		"has_authorization", httpReq.Header.Get("Authorization") != "",
+		"tokentype", httpReq.Header.Get("tokentype"),
+		"host", httpReq.Header.Get("Host"),
+	)
 
 	resp, err := g.client.Do(httpReq)
 	if err != nil {

@@ -3,6 +3,7 @@ package gateway
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -32,7 +33,7 @@ type convertConfig struct {
 }
 
 // convertRequest 将 Anthropic Messages API 请求体转换为 Kiro ConversationState 格式。
-func convertRequest(body []byte, account *sdk.Account, cfg convertConfig) ([]byte, *ConvertContext, error) {
+func convertRequest(body []byte, account *sdk.Account, cfg convertConfig, logger *slog.Logger) ([]byte, *ConvertContext, error) {
 	parsed := gjson.ParseBytes(body)
 	model := parsed.Get("model").String()
 	kiroID, ctxWin, err := MapToKiroModel(model)
@@ -51,13 +52,36 @@ func convertRequest(body []byte, account *sdk.Account, cfg convertConfig) ([]byt
 	thinkingPrefix := buildThinkingPrefix(parsed)
 	messages := parsed.Get("messages").Array()
 
+	logger.Debug("convert_input",
+		"model", model,
+		"kiro_model", kiroID,
+		"system_prompt_len", len(systemPrompt),
+		"thinking_prefix", thinkingPrefix,
+		"messages_count", len(messages),
+		"tools_count", len(parsed.Get("tools").Array()),
+		"has_profile_arn", cfg.ProfileArn != "",
+		"conversation_id", conversationID,
+	)
+
 	if len(messages) == 0 {
 		return nil, nil, fmt.Errorf("messages array is empty")
 	}
 
+	// 统计消息角色分布
+	roleCounts := map[string]int{}
+	for _, msg := range messages {
+		roleCounts[msg.Get("role").String()]++
+	}
+	logger.Debug("convert_messages_breakdown", "role_counts", fmt.Sprintf("%v", roleCounts))
+
 	// 截断 assistant prefill（最后消息是 assistant 则去掉）
+	trimmed := 0
 	for len(messages) > 0 && messages[len(messages)-1].Get("role").String() == "assistant" {
 		messages = messages[:len(messages)-1]
+		trimmed++
+	}
+	if trimmed > 0 {
+		logger.Debug("convert_trimmed_assistant_prefill", "trimmed_count", trimmed)
 	}
 	if len(messages) == 0 {
 		return nil, nil, fmt.Errorf("no user message found after trimming assistant prefill")
@@ -66,16 +90,80 @@ func convertRequest(body []byte, account *sdk.Account, cfg convertConfig) ([]byt
 	// 转换 tools
 	tools, toolNameMap := convertTools(parsed.Get("tools").Array())
 	convCtx.ToolNameMap = toolNameMap
+	if len(toolNameMap) > 0 {
+		logger.Debug("convert_tool_names_truncated", "truncated_count", len(toolNameMap))
+	}
+
+	// 记录工具详细信息
+	if len(tools) > 0 {
+		var toolNames []string
+		var maxSchemaSize int
+		for _, t := range tools {
+			spec := t.(map[string]any)["toolSpecification"].(map[string]any)
+			toolNames = append(toolNames, spec["name"].(string))
+			if schema, ok := spec["inputSchema"]; ok {
+				schemaBytes, _ := json.Marshal(schema)
+				if len(schemaBytes) > maxSchemaSize {
+					maxSchemaSize = len(schemaBytes)
+				}
+			}
+		}
+		toolsJSON, _ := json.Marshal(tools)
+		logger.Debug("convert_tools",
+			"tool_count", len(tools),
+			"tools_total_bytes", len(toolsJSON),
+			"max_schema_bytes", maxSchemaSize,
+			"tool_names", strings.Join(toolNames, ", "),
+		)
+	}
 
 	// 构建 history
 	history := buildHistory(systemPrompt, thinkingPrefix, messages[:len(messages)-1], kiroID)
+	historyBeforeClean := len(history)
+
+	// 提取 currentMessage 中的 tool_result ID，避免清理掉 history 中对应的 tool_use
+	lastMsg := messages[len(messages)-1]
+	currentToolResultIDs := extractToolResultIDs(lastMsg)
 
 	// 清理孤立 tool_use / tool_result
-	history = cleanOrphanToolPairs(history)
+	history = cleanOrphanToolPairs(history, currentToolResultIDs)
 
-	// 构建 currentMessage
-	lastMsg := messages[len(messages)-1]
+	historyJSON, _ := json.Marshal(history)
+	logger.Debug("convert_history",
+		"history_count_before_clean", historyBeforeClean,
+		"history_count_after_clean", len(history),
+		"history_total_bytes", len(historyJSON),
+		"current_msg_tool_result_ids", len(currentToolResultIDs),
+	)
 	currentMessage := buildCurrentMessage(lastMsg, kiroID, tools)
+	currentMsgJSON, _ := json.Marshal(currentMessage)
+
+	// 分析 currentMessage 内容
+	lastMsgContent := lastMsg.Get("content")
+	var contentTypes []string
+	if lastMsgContent.Type == gjson.String {
+		contentTypes = append(contentTypes, fmt.Sprintf("text(%d chars)", len(lastMsgContent.String())))
+	} else if lastMsgContent.IsArray() {
+		for _, block := range lastMsgContent.Array() {
+			bt := block.Get("type").String()
+			switch bt {
+			case "text":
+				contentTypes = append(contentTypes, fmt.Sprintf("text(%d chars)", len(block.Get("text").String())))
+			case "tool_result":
+				trContent := block.Get("content").String()
+				contentTypes = append(contentTypes, fmt.Sprintf("tool_result(id=%s, %d chars)", block.Get("tool_use_id").String()[:8], len(trContent)))
+			case "image":
+				contentTypes = append(contentTypes, "image")
+			default:
+				contentTypes = append(contentTypes, bt)
+			}
+		}
+	}
+	logger.Debug("convert_current_message",
+		"last_msg_role", lastMsg.Get("role").String(),
+		"current_message_bytes", len(currentMsgJSON),
+		"content_blocks", strings.Join(contentTypes, "; "),
+	)
 
 	// 组装 ConversationState
 	state := map[string]any{
@@ -97,6 +185,11 @@ func convertRequest(body []byte, account *sdk.Account, cfg convertConfig) ([]byt
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal kiro request: %w", err)
 	}
+
+	logger.Debug("convert_result",
+		"total_bytes", len(result),
+		"total_mb", fmt.Sprintf("%.2f", float64(len(result))/1024/1024),
+	)
 
 	return result, convCtx, nil
 }
@@ -409,9 +502,34 @@ func normalizeSchema(schema string) string {
 	return s
 }
 
-func cleanOrphanToolPairs(history []any) []any {
+// extractToolResultIDs 从 Anthropic 格式的用户消息中提取所有 tool_result 的 tool_use_id。
+func extractToolResultIDs(msg gjson.Result) map[string]bool {
+	ids := make(map[string]bool)
+	content := msg.Get("content")
+	if !content.IsArray() {
+		return ids
+	}
+	for _, block := range content.Array() {
+		if block.Get("type").String() == "tool_result" {
+			if id := block.Get("tool_use_id").String(); id != "" {
+				ids[id] = true
+			}
+		}
+	}
+	return ids
+}
+
+// cleanOrphanToolPairs 清理 history 中孤立的 tool_use / tool_result。
+// currentMsgResultIDs 是 currentMessage 中已有的 tool_result ID，
+// 对应的 tool_use 在 history 中不应被清除。
+func cleanOrphanToolPairs(history []any, currentMsgResultIDs map[string]bool) []any {
 	toolUseIDs := make(map[string]bool)
 	toolResultIDs := make(map[string]bool)
+
+	// currentMessage 中的 tool_result ID 也算有效配对
+	for id := range currentMsgResultIDs {
+		toolResultIDs[id] = true
+	}
 
 	// 第一遍：收集所有 tool_use 和 tool_result 的 ID
 	for _, entry := range history {

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"encoding/json"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -144,7 +145,7 @@ func TestConvertRequest_BasicMessage(t *testing.T) {
 		Credentials: map[string]string{"profile_arn": "arn:test"},
 	}
 
-	result, convCtx, err := convertRequest(body, account, convertConfig{ProfileArn: "arn:test"})
+	result, convCtx, err := convertRequest(body, account, convertConfig{ProfileArn: "arn:test"}, slog.Default())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -178,7 +179,7 @@ func TestConvertRequest_WithSystemPrompt(t *testing.T) {
 	}`)
 
 	account := &sdk.Account{Type: "oauth", Credentials: map[string]string{}}
-	result, _, err := convertRequest(body, account, convertConfig{})
+	result, _, err := convertRequest(body, account, convertConfig{}, slog.Default())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -211,7 +212,7 @@ func TestConvertRequest_WithThinking(t *testing.T) {
 	}`)
 
 	account := &sdk.Account{Type: "oauth", Credentials: map[string]string{}}
-	result, _, err := convertRequest(body, account, convertConfig{})
+	result, _, err := convertRequest(body, account, convertConfig{}, slog.Default())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
