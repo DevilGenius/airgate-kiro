@@ -1,5 +1,5 @@
-github.com/DouDOU-start/airgate-sdk v0.0.0-20260412142440-cf78d51d7cd9 h1:RLkz6eoqW/5hIU1ppKlgRmozd96kU3WEiuvXVF5X96k=
-github.com/DouDOU-start/airgate-sdk v0.0.0-20260412142440-cf78d51d7cd9/go.mod h1:Ll8rGvyw2B/yekG7wXcQBDJLYUatKBo3T00lp5Hbnw8=
+github.com/DouDOU-start/airgate-sdk v0.0.0-20260514110732-56680479df13 h1:QvmFJ0UFE/ZHGP+8ZG+6K9dJ3LhigbcaSY96reOA6FI=
+github.com/DouDOU-start/airgate-sdk v0.0.0-20260514110732-56680479df13/go.mod h1:784vC4lIfCnUdOroWuvn55Dv/b9TucVMpFwuu40gc0Q=
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
 github.com/bufbuild/protocompile v0.14.1/go.mod h1:ppVdAIhbr2H8asPk6k4pY7t9zB1OU5DoEw9xY/FUi1c=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
