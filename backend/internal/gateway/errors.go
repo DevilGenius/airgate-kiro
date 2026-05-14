@@ -16,6 +16,8 @@ func classifyHTTPFailure(statusCode int, message string) sdk.OutcomeKind {
 	switch {
 	case statusCode == http.StatusTooManyRequests:
 		return sdk.OutcomeAccountRateLimited
+	case statusCode >= 400 && statusCode != http.StatusTooManyRequests && isModelUnsupportedText(message):
+		return sdk.OutcomeAccountModelUnsupported
 	case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
 		return sdk.OutcomeAccountDead
 	case statusCode == http.StatusPaymentRequired && strings.Contains(message, "MONTHLY_REQUEST_COUNT"):
@@ -27,6 +29,34 @@ func classifyHTTPFailure(statusCode int, message string) sdk.OutcomeKind {
 	default:
 		return sdk.OutcomeClientError
 	}
+}
+
+func isModelUnsupportedText(msg string) bool {
+	lower := strings.ToLower(msg)
+	if lower == "" {
+		return false
+	}
+	directSignals := []string{
+		"model_not_found",
+		"model_not_supported",
+		"invalid_model",
+		"unsupported_model",
+		"no such model",
+	}
+	for _, signal := range directSignals {
+		if strings.Contains(lower, signal) {
+			return true
+		}
+	}
+	if !strings.Contains(lower, "model") {
+		return false
+	}
+	return strings.Contains(lower, "not supported") ||
+		strings.Contains(lower, "unsupported") ||
+		strings.Contains(lower, "does not exist") ||
+		strings.Contains(lower, "not found") ||
+		strings.Contains(lower, "not available") ||
+		strings.Contains(lower, "invalid model")
 }
 
 func containsAccountDisabledKeyword(msg string) bool {

@@ -111,15 +111,11 @@ func (g *KiroGateway) doForward(ctx context.Context, req *sdk.ForwardRequest, lo
 				"message": err.Error(),
 			},
 		})
-		if req.Writer != nil {
-			req.Writer.Header().Set("Content-Type", "application/json")
-			req.Writer.WriteHeader(http.StatusBadRequest)
-			req.Writer.Write(errBody)
-		}
 		return sdk.ForwardOutcome{
 			Kind: sdk.OutcomeClientError,
 			Upstream: sdk.UpstreamResponse{
 				StatusCode: http.StatusBadRequest,
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
 				Body:       errBody,
 			},
 			Reason: err.Error(),
@@ -176,17 +172,6 @@ func (g *KiroGateway) handleErrorResponse(resp *http.Response, req *sdk.ForwardR
 	logger.Warn("upstream error", "status", resp.StatusCode, "kind", kind.String(), "message", truncateString(message, 200))
 
 	outcome := failureOutcome(resp.StatusCode, body, resp.Header.Clone(), message, retryAfter)
-
-	// ClientError: 透传给客户端
-	if kind == sdk.OutcomeClientError && req.Writer != nil {
-		for k, vs := range resp.Header {
-			for _, v := range vs {
-				req.Writer.Header().Add(k, v)
-			}
-		}
-		req.Writer.WriteHeader(resp.StatusCode)
-		req.Writer.Write(body)
-	}
 
 	return outcome
 }
