@@ -32,7 +32,7 @@ jobs:
           node-version: 22
 
       - name: Build @airgate/theme
-        run: cd ../airgate-sdk/frontend && npm ci && npm run build
+        run: cd ../airgate-sdk/theme && npm ci && npm run build
 
       - name: Build frontend
         run: cd web && npm install && npm run build
