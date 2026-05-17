@@ -28,6 +28,12 @@ config:
     label: Kiro IDE Commit Hash
     type: string
     required: false
+  - key: ignore_usage_limit
+    label: 无视用量限流
+    type: bool
+    required: false
+    default: "false"
+    description: 开启后用量达到或超过 100% 时仍继续参与调度；用量窗口仍展示真实百分比。
 frontend_widgets:
   - slot: account-create
     entry_file: index.js

@@ -17,6 +17,7 @@ type accountUsageWindow struct {
 	UsedPercent  float64 `json:"used_percent"`
 	ResetSeconds int64   `json:"reset_seconds"`
 	ResetAt      string  `json:"reset_at,omitempty"`
+	IgnoreLimit  bool    `json:"ignore_limit,omitempty"`
 }
 
 type accountUsageInfo struct {

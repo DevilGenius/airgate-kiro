@@ -5,11 +5,61 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
 )
+
+type testPluginContext struct {
+	config sdk.PluginConfig
+}
+
+func (c testPluginContext) Logger() *slog.Logger {
+	return slog.Default()
+}
+
+func (c testPluginContext) Config() sdk.PluginConfig {
+	return c.config
+}
+
+type testPluginConfig map[string]string
+
+func (c testPluginConfig) GetString(key string) string {
+	return c[key]
+}
+
+func (c testPluginConfig) GetInt(key string) int {
+	v, _ := strconv.Atoi(c[key])
+	return v
+}
+
+func (c testPluginConfig) GetBool(key string) bool {
+	v, _ := strconv.ParseBool(c[key])
+	return v
+}
+
+func (c testPluginConfig) GetFloat64(key string) float64 {
+	v, _ := strconv.ParseFloat(c[key], 64)
+	return v
+}
+
+func (c testPluginConfig) GetDuration(key string) time.Duration {
+	v, _ := time.ParseDuration(c[key])
+	return v
+}
+
+func (c testPluginConfig) GetAll() map[string]string {
+	out := make(map[string]string, len(c))
+	for key, value := range c {
+		out[key] = value
+	}
+	return out
+}
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
@@ -105,5 +155,24 @@ func TestHandleAccountQuotaInvalidBody(t *testing.T) {
 	}
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", status, http.StatusBadRequest)
+	}
+}
+
+func TestBuildUsageWindowsCanIgnoreLimit(t *testing.T) {
+	g := &KiroGateway{
+		ctx: testPluginContext{
+			config: testPluginConfig{"ignore_usage_limit": "true"},
+		},
+	}
+
+	windows := g.buildUsageWindows(&quotaInfo{Used: 180, Total: 100}, time.Now())
+	if len(windows) != 1 {
+		t.Fatalf("windows len = %d, want 1", len(windows))
+	}
+	if !windows[0].IgnoreLimit {
+		t.Fatalf("IgnoreLimit = false, want true")
+	}
+	if windows[0].UsedPercent != 180 {
+		t.Fatalf("UsedPercent = %v, want 180", windows[0].UsedPercent)
 	}
 }

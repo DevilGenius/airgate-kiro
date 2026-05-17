@@ -683,8 +683,18 @@ func (g *KiroGateway) buildUsageWindows(quota *quotaInfo, now time.Time) []accou
 	}
 
 	return []accountUsageWindow{
-		newAccountUsageWindow("monthly", label, usedPercent, resetAt, now),
+		g.newAccountUsageWindow("monthly", label, usedPercent, resetAt, now),
 	}
+}
+
+func (g *KiroGateway) newAccountUsageWindow(key, label string, usedPercent float64, resetAt *time.Time, now time.Time) accountUsageWindow {
+	window := newAccountUsageWindow(key, label, usedPercent, resetAt, now)
+	window.IgnoreLimit = g.ignoreUsageLimit()
+	return window
+}
+
+func (g *KiroGateway) ignoreUsageLimit() bool {
+	return g != nil && g.ctx != nil && g.ctx.Config() != nil && g.ctx.Config().GetBool("ignore_usage_limit")
 }
 
 func normalizePlanName(raw string) string {
