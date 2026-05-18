@@ -14,6 +14,9 @@ type quotaInfo struct {
 type accountUsageWindow struct {
 	Key          string  `json:"key,omitempty"`
 	Label        string  `json:"label"`
+	DisplayLabel string  `json:"display_label,omitempty"`
+	Slot         string  `json:"slot,omitempty"`
+	Group        string  `json:"group,omitempty"`
 	UsedPercent  float64 `json:"used_percent"`
 	ResetSeconds int64   `json:"reset_seconds"`
 	ResetAt      string  `json:"reset_at,omitempty"`
@@ -30,10 +33,18 @@ type accountUsageAccountsResponse struct {
 }
 
 func newAccountUsageWindow(key, label string, usedPercent float64, resetAt *time.Time, now time.Time) accountUsageWindow {
+	slot := key
+	displayLabel := slot
+	if key == "monthly" {
+		displayLabel = "Cr"
+	}
 	window := accountUsageWindow{
-		Key:         key,
-		Label:       label,
-		UsedPercent: usedPercent,
+		Key:          key,
+		Label:        label,
+		DisplayLabel: displayLabel,
+		Slot:         slot,
+		Group:        "base",
+		UsedPercent:  usedPercent,
 	}
 	if resetAt != nil {
 		window.ResetAt = resetAt.UTC().Format(time.RFC3339)
