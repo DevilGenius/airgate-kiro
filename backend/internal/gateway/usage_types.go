@@ -11,6 +11,9 @@ type quotaInfo struct {
 	Extra     map[string]string `json:"extra,omitempty"`
 }
 
+// accountUsageWindow 只携带原始字段（key / label / used_percent / reset_*），
+// display_label / slot / group 一律由 core 的 normalizeAccountUsageWindow 推断，
+// 避免与 core 侧 inferUsageWindowDisplayLabel 中"Cr"等启发式逻辑产生重复。
 type accountUsageWindow struct {
 	Key          string  `json:"key,omitempty"`
 	Label        string  `json:"label"`
