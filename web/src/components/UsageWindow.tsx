@@ -4,6 +4,9 @@ import type { AccountSurfaceProps } from '@doudou-start/airgate-theme/plugin';
 interface UsageWindowItem {
   key?: string;
   label: string;
+  display_label?: string;
+  slot?: string;
+  group?: string;
   used_percent: number;
   reset_seconds: number;
   reset_at?: string;
@@ -69,10 +72,13 @@ export function UsageWindow({ context }: AccountSurfaceProps) {
         const barPercent = Math.max(0, Math.min(100, percent));
         const color = usageColor(w.used_percent);
         const resetText = formatReset(resolveResetSeconds(w, resetNow));
+        // core normalizer 会下发 display_label（如 "Cr"）；插件 devserver
+        // 直读上游响应时回退到 slot 或原始 label。
+        const displayLabel = w.display_label?.trim() || w.slot?.trim() || w.label;
         return (
           <div key={w.key || w.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem', minWidth: 0 }}>
-            <span style={{ fontSize: '0.625rem', fontWeight: 600, lineHeight: 1, color: 'var(--ag-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {w.label}
+            <span title={w.label} style={{ fontSize: '0.625rem', fontWeight: 600, lineHeight: 1, color: 'var(--ag-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {displayLabel}
             </span>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(4.625rem, 1fr) 1.375rem 2.75rem', height: '0.75rem', alignItems: 'center', gap: '0.125rem', minWidth: 0 }}>
               <div style={{ height: '0.375rem', minWidth: 0, overflow: 'hidden', borderRadius: '999px', background: 'var(--ag-glass-border)' }}>
