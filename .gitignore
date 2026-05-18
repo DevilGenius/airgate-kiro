@@ -32,3 +32,6 @@ Thumbs.db
 # Go workspace (local only)
 go.work
 go.work.sum
+
+# Local git attributes
+.gitattributes
