@@ -537,6 +537,41 @@ export function AccountForm({
           <input type="text" placeholder="us-east-1" value={credentials.region || ''} onChange={(e) => onChange({ ...credentials, region: e.target.value })} style={inputStyle} />
         </div>
       )}
+
+      {/* 账号选项：与具体认证类型无关，对 OAuth / API Key 均生效 */}
+      {!batchMode && (
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.5rem',
+            padding: '0.75rem',
+            borderRadius: cssVar('radiusMd'),
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: cssVar('border'),
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={credentials.ignore_usage_limit === 'true'}
+            onChange={(e) => {
+              const next = { ...credentials };
+              if (e.target.checked) next.ignore_usage_limit = 'true';
+              else delete next.ignore_usage_limit;
+              onChange(next);
+            }}
+            style={{ marginTop: '0.2rem', cursor: 'pointer' }}
+          />
+          <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>无视用量限流</span>
+            <span style={{ fontSize: '0.75rem', color: cssVar('textSecondary') }}>
+              Kiro 允许超刷。开启后该账号即便用量达到或超过 100% 也不会被打入限流态；用量百分比仍照常展示。
+            </span>
+          </span>
+        </label>
+      )}
     </div>
   );
 }

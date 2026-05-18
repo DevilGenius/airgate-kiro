@@ -17,7 +17,8 @@ func classifyHTTPFailure(statusCode int, message string) sdk.OutcomeKind {
 	case statusCode == http.StatusTooManyRequests:
 		return sdk.OutcomeAccountRateLimited
 	case statusCode >= 400 && statusCode != http.StatusTooManyRequests && isModelUnsupportedText(message):
-		return sdk.OutcomeAccountModelUnsupported
+		// model_not_supported 等文本走 ClientError（SDK 已将 OutcomeAccountModelUnsupported 归入 ClientError）。
+		return sdk.OutcomeClientError
 	case statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden:
 		return sdk.OutcomeAccountDead
 	case statusCode == http.StatusPaymentRequired && strings.Contains(message, "MONTHLY_REQUEST_COUNT"):

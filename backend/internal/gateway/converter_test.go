@@ -266,7 +266,7 @@ func TestNormalizeSchema(t *testing.T) {
 	result := normalizeSchema(input)
 
 	var parsed map[string]any
-	json.Unmarshal([]byte(result), &parsed)
+	_ = json.Unmarshal([]byte(result), &parsed)
 
 	if parsed["required"] == nil {
 		t.Error("expected required to be non-null")

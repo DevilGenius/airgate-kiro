@@ -352,7 +352,7 @@ func (c *SSEConverter) emitThinkingDelta(text string) {
 }
 
 func (c *SSEConverter) emitSSE(event, data string) {
-	fmt.Fprintf(c.writer, "event: %s\ndata: %s\n\n", event, data)
+	_, _ = fmt.Fprintf(c.writer, "event: %s\ndata: %s\n\n", event, data)
 	if c.flusher != nil {
 		c.flusher.Flush()
 	}
@@ -410,7 +410,7 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 				}
 				var input any
 				if tu.Input != "" {
-					json.Unmarshal([]byte(tu.Input), &input)
+					_ = json.Unmarshal([]byte(tu.Input), &input)
 				}
 				if input == nil {
 					input = map[string]any{}
@@ -448,7 +448,7 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 	if w != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(respBody)
+		_, _ = w.Write(respBody)
 	}
 
 	usage := newTokenUsage(convertCtx.AnthropicModel, inputTokens, outputTokens, 0, time.Since(start).Milliseconds())

@@ -304,7 +304,7 @@ func registerIDCClient(ctx context.Context, region, issuerURL string, httpClient
 	if err != nil {
 		return "", "", fmt.Errorf("IDC client registration request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -398,7 +398,7 @@ func startDeviceAuthorization(ctx context.Context, region, clientID, clientSecre
 	if err != nil {
 		return nil, fmt.Errorf("device authorization request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -442,7 +442,7 @@ func pollDeviceToken(ctx context.Context, store *oauthSessionStore, sessionID st
 	if err != nil {
 		return nil, fmt.Errorf("device token poll failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 
@@ -526,7 +526,7 @@ func exchangeIDCCode(ctx context.Context, code string, sess *OAuthSession, httpC
 	if err != nil {
 		return nil, fmt.Errorf("IDC token exchange request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -588,7 +588,7 @@ func exchangeCodeForToken(ctx context.Context, code, codeVerifier, redirectURI s
 	if err != nil {
 		return nil, fmt.Errorf("token exchange request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
@@ -753,7 +753,7 @@ func (cl *callbackListener) stop() {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	cl.server.Shutdown(ctx)
+	_ = cl.server.Shutdown(ctx)
 	cl.running = false
 }
 
@@ -774,7 +774,7 @@ func (cl *callbackListener) handleCallback(w http.ResponseWriter, r *http.Reques
 	cl.logger.Info("oauth callback captured", "state_prefix", statePrefix)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(callbackSuccessHTML))
+	_, _ = w.Write([]byte(callbackSuccessHTML))
 }
 
 func (cl *callbackListener) getResult(state string) (string, bool) {

@@ -5,61 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
 )
-
-type testPluginContext struct {
-	config sdk.PluginConfig
-}
-
-func (c testPluginContext) Logger() *slog.Logger {
-	return slog.Default()
-}
-
-func (c testPluginContext) Config() sdk.PluginConfig {
-	return c.config
-}
-
-type testPluginConfig map[string]string
-
-func (c testPluginConfig) GetString(key string) string {
-	return c[key]
-}
-
-func (c testPluginConfig) GetInt(key string) int {
-	v, _ := strconv.Atoi(c[key])
-	return v
-}
-
-func (c testPluginConfig) GetBool(key string) bool {
-	v, _ := strconv.ParseBool(c[key])
-	return v
-}
-
-func (c testPluginConfig) GetFloat64(key string) float64 {
-	v, _ := strconv.ParseFloat(c[key], 64)
-	return v
-}
-
-func (c testPluginConfig) GetDuration(key string) time.Duration {
-	v, _ := time.ParseDuration(c[key])
-	return v
-}
-
-func (c testPluginConfig) GetAll() map[string]string {
-	out := make(map[string]string, len(c))
-	for key, value := range c {
-		out[key] = value
-	}
-	return out
-}
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
@@ -158,21 +108,35 @@ func TestHandleAccountQuotaInvalidBody(t *testing.T) {
 	}
 }
 
-func TestBuildUsageWindowsCanIgnoreLimit(t *testing.T) {
-	g := &KiroGateway{
-		ctx: testPluginContext{
-			config: testPluginConfig{"ignore_usage_limit": "true"},
-		},
+func TestBuildUsageWindowsAccountIgnoreLimit(t *testing.T) {
+	g := &KiroGateway{}
+	quota := &quotaInfo{Used: 180, Total: 100}
+
+	cases := []struct {
+		name        string
+		credentials map[string]string
+		wantIgnore  bool
+	}{
+		{name: "no flag", credentials: map[string]string{"region": "us-east-1"}, wantIgnore: false},
+		{name: "true", credentials: map[string]string{"ignore_usage_limit": "true"}, wantIgnore: true},
+		{name: "1", credentials: map[string]string{"ignore_usage_limit": "1"}, wantIgnore: true},
+		{name: "yes mixed case", credentials: map[string]string{"ignore_usage_limit": " YES "}, wantIgnore: true},
+		{name: "false", credentials: map[string]string{"ignore_usage_limit": "false"}, wantIgnore: false},
+		{name: "empty", credentials: map[string]string{"ignore_usage_limit": ""}, wantIgnore: false},
 	}
 
-	windows := g.buildUsageWindows(&quotaInfo{Used: 180, Total: 100}, time.Now())
-	if len(windows) != 1 {
-		t.Fatalf("windows len = %d, want 1", len(windows))
-	}
-	if !windows[0].IgnoreLimit {
-		t.Fatalf("IgnoreLimit = false, want true")
-	}
-	if windows[0].UsedPercent != 180 {
-		t.Fatalf("UsedPercent = %v, want 180", windows[0].UsedPercent)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			windows := g.buildUsageWindows(quota, c.credentials, time.Now())
+			if len(windows) != 1 {
+				t.Fatalf("windows len = %d, want 1", len(windows))
+			}
+			if windows[0].IgnoreLimit != c.wantIgnore {
+				t.Fatalf("IgnoreLimit = %v, want %v", windows[0].IgnoreLimit, c.wantIgnore)
+			}
+			if windows[0].UsedPercent != 180 {
+				t.Fatalf("UsedPercent = %v, want 180", windows[0].UsedPercent)
+			}
+		})
 	}
 }

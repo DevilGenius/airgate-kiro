@@ -122,9 +122,7 @@ func extractSearchQuery(body []byte) string {
 	}
 
 	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, webSearchQueryPrefix) {
-		text = strings.TrimPrefix(text, webSearchQueryPrefix)
-	}
+	text = strings.TrimPrefix(text, webSearchQueryPrefix)
 	return text
 }
 
@@ -197,7 +195,7 @@ func (g *KiroGateway) callMCP(ctx context.Context, req *sdk.ForwardRequest, quer
 	if err != nil {
 		return nil, fmt.Errorf("MCP request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -319,7 +317,7 @@ func streamWebSearchSSE(w http.ResponseWriter, results *webSearchResults, query,
 
 	flusher, _ := w.(http.Flusher)
 	emit := func(event, data string) {
-		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
+		_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
 		if flusher != nil {
 			flusher.Flush()
 		}
@@ -436,7 +434,7 @@ func bufferWebSearchResponse(w http.ResponseWriter, results *webSearchResults, q
 	if w != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write(respBody)
+		_, _ = w.Write(respBody)
 	}
 
 	usage := newTokenUsage(model, inputTokens, outputTokens, 0, time.Since(start).Milliseconds())

@@ -221,7 +221,7 @@ func (m *tokenManager) refreshSocial(ctx context.Context, account *sdk.Account) 
 	if err != nil {
 		return nil, fmt.Errorf("social refresh request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
@@ -285,7 +285,7 @@ func (m *tokenManager) refreshIdC(ctx context.Context, account *sdk.Account) (*t
 	if err != nil {
 		return nil, fmt.Errorf("idc refresh request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {

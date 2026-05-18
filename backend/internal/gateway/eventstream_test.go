@@ -16,7 +16,7 @@ func buildEventStreamFrame(headers map[string]string, payload []byte) []byte {
 		headerBuf.WriteByte(byte(len(name)))
 		headerBuf.WriteString(name)
 		headerBuf.WriteByte(headerTypeString) // type 7 = String
-		binary.Write(&headerBuf, binary.BigEndian, uint16(len(value)))
+		_ = binary.Write(&headerBuf, binary.BigEndian, uint16(len(value)))
 		headerBuf.WriteString(value)
 	}
 	headerData := headerBuf.Bytes()
@@ -32,12 +32,12 @@ func buildEventStreamFrame(headers map[string]string, payload []byte) []byte {
 
 	var msg bytes.Buffer
 	msg.Write(prelude[:])
-	binary.Write(&msg, binary.BigEndian, preludeCRC)
+	_ = binary.Write(&msg, binary.BigEndian, preludeCRC)
 	msg.Write(headerData)
 	msg.Write(payload)
 
 	msgCRC := crc32.ChecksumIEEE(msg.Bytes())
-	binary.Write(&msg, binary.BigEndian, msgCRC)
+	_ = binary.Write(&msg, binary.BigEndian, msgCRC)
 
 	return msg.Bytes()
 }

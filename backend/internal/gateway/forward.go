@@ -150,7 +150,7 @@ func (g *KiroGateway) doForward(ctx context.Context, req *sdk.ForwardRequest, lo
 	if err != nil {
 		return transientOutcome("upstream request failed: " + err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return g.handleErrorResponse(resp, req, logger)
@@ -181,7 +181,7 @@ func (g *KiroGateway) handleModelsRequest(req *sdk.ForwardRequest) sdk.ForwardOu
 	if req.Writer != nil {
 		req.Writer.Header().Set("Content-Type", "application/json")
 		req.Writer.WriteHeader(http.StatusOK)
-		req.Writer.Write(body)
+		_, _ = req.Writer.Write(body)
 	}
 	return successOutcome(http.StatusOK, body, nil, nil)
 }
@@ -194,7 +194,7 @@ func (g *KiroGateway) handleCountTokens(req *sdk.ForwardRequest) sdk.ForwardOutc
 	if req.Writer != nil {
 		req.Writer.Header().Set("Content-Type", "application/json")
 		req.Writer.WriteHeader(http.StatusOK)
-		req.Writer.Write(respBody)
+		_, _ = req.Writer.Write(respBody)
 	}
 	return successOutcome(http.StatusOK, respBody, nil, nil)
 }
