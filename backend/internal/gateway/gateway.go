@@ -575,7 +575,7 @@ func (g *KiroGateway) handleUsageAccounts(ctx context.Context, body []byte) (int
 		if quota == nil {
 			continue
 		}
-		windows := g.buildUsageWindows(quota, now)
+		windows := g.buildUsageWindows(quota, a.Credentials, now)
 		if len(windows) == 0 {
 			continue
 		}
@@ -606,7 +606,7 @@ func (g *KiroGateway) handleUsageProbe(ctx context.Context, body []byte) (int, h
 	}
 
 	now := time.Now()
-	windows := g.buildUsageWindows(quota, now)
+	windows := g.buildUsageWindows(quota, req.Credentials, now)
 	info := accountUsageInfo{
 		UpdatedAt: now.UTC().Format(time.RFC3339),
 		Windows:   windows,
@@ -666,7 +666,7 @@ func (g *KiroGateway) probeUsage(ctx context.Context, id int64, credentials map[
 	return quota
 }
 
-func (g *KiroGateway) buildUsageWindows(quota *quotaInfo, now time.Time) []accountUsageWindow {
+func (g *KiroGateway) buildUsageWindows(quota *quotaInfo, credentials map[string]string, now time.Time) []accountUsageWindow {
 	if quota == nil || quota.Total <= 0 {
 		return nil
 	}
@@ -682,19 +682,27 @@ func (g *KiroGateway) buildUsageWindows(quota *quotaInfo, now time.Time) []accou
 		}
 	}
 
-	return []accountUsageWindow{
-		g.newAccountUsageWindow("monthly", label, usedPercent, resetAt, now),
+	window := newAccountUsageWindow("monthly", label, usedPercent, resetAt, now)
+	// 账号级 ignore_usage_limit：用户在 kiro 账号表单上勾选后存入 credentials，
+	// 用量达到/超过 100% 也不会被 core 打入 rate_limited（详见 core persistRateLimitFromWindows）。
+	if accountIgnoresUsageLimit(credentials) {
+		window.IgnoreLimit = true
 	}
+	return []accountUsageWindow{window}
 }
 
-func (g *KiroGateway) newAccountUsageWindow(key, label string, usedPercent float64, resetAt *time.Time, now time.Time) accountUsageWindow {
-	window := newAccountUsageWindow(key, label, usedPercent, resetAt, now)
-	window.IgnoreLimit = g.ignoreUsageLimit()
-	return window
-}
-
-func (g *KiroGateway) ignoreUsageLimit() bool {
-	return g != nil && g.ctx != nil && g.ctx.Config() != nil && g.ctx.Config().GetBool("ignore_usage_limit")
+// accountIgnoresUsageLimit 判断账号是否在 credentials 中声明"无视用量限流"。
+// 兼容 "true"/"1"/"yes"/"on"（大小写无关）。
+func accountIgnoresUsageLimit(credentials map[string]string) bool {
+	v := credentials["ignore_usage_limit"]
+	if v == "" {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "true", "1", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func normalizePlanName(raw string) string {

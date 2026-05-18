@@ -42,7 +42,6 @@ func buildPluginInfo() sdk.PluginInfo {
 			{Key: "node_version", Label: "Node.js 版本标识", Type: "string", Default: DefaultNodeVersion},
 			{Key: "default_region", Label: "默认 AWS Region", Type: "string", Default: DefaultRegion},
 			{Key: "kiro_commit", Label: "Kiro IDE Commit Hash", Type: "string", Default: DefaultKiroCommit},
-			{Key: "ignore_usage_limit", Label: "无视用量限流", Type: "bool", Default: "false", Description: "开启后用量达到或超过 100% 时仍继续参与调度；用量窗口仍展示真实百分比。"},
 		},
 		Metadata: map[string]string{
 			"account.oauth_plans": `[
