@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-//go:embed webdist/*
+//go:embed all:webdist
 var webDistFS embed.FS
 
 func (g *KiroGateway) GetWebAssets() map[string][]byte {
@@ -26,6 +26,9 @@ func (g *KiroGateway) GetWebAssets() map[string][]byte {
 			return nil
 		}
 		relPath := strings.TrimPrefix(path, "webdist/")
+		if relPath == "" || relPath == "placeholder.txt" {
+			return nil
+		}
 		assets[relPath] = content
 		return nil
 	})
