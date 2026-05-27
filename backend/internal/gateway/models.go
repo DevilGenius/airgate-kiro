@@ -27,11 +27,11 @@ var kiroModels = []kiroModelSpec{
 // ── 模型定价（对齐 Anthropic 官方 2026-04 定价，$/1M tokens）──
 
 type pricingSpec struct {
-	InputPrice           float64
-	CachedPrice          float64
-	CacheCreationPrice   float64
-	CacheCreation1hPrice float64
-	OutputPrice          float64
+	InputPrice                 float64
+	CachedPrice                float64
+	CacheCreationPrice         float64
+	ClaudeCacheCreation1hPrice float64
+	OutputPrice                float64
 }
 
 var pricingRegistry = map[string]pricingSpec{
@@ -77,69 +77,31 @@ func fillUsageCost(usage *sdk.Usage) {
 	inputTokens := usageMetricInt(usage, usageMetricInputTokens)
 	outputTokens := usageMetricInt(usage, usageMetricOutputTokens)
 	cachedInputTokens := usageMetricInt(usage, usageMetricCachedInputTokens)
+	cacheCreationTokens := usageMetricInt(usage, usageMetricCacheCreationTokens)
+	cacheCreation5mTokens := usageMetricInt(usage, usageMetricCacheCreation5mTokens)
+	cacheCreation1hTokens := usageMetricInt(usage, usageMetricCacheCreation1hTokens)
+	genericCacheCreationTokens := cacheCreationTokens - cacheCreation5mTokens - cacheCreation1hTokens
+	if genericCacheCreationTokens < 0 {
+		genericCacheCreationTokens = 0
+	}
+	billableCacheCreation5mTokens := cacheCreation5mTokens + genericCacheCreationTokens
 
 	inputCost := tokenCost(inputTokens, p.InputPrice)
 	cachedCost := tokenCost(cachedInputTokens, p.CachedPrice)
+	cacheCreation5mCost := tokenCost(billableCacheCreation5mTokens, p.CacheCreationPrice)
+	cacheCreation1hCost := tokenCost(cacheCreation1hTokens, p.ClaudeCacheCreation1hPrice)
 	outputCost := tokenCost(outputTokens, p.OutputPrice)
 	usage.InputPrice = p.InputPrice
 	usage.CachedInputPrice = p.CachedPrice
+	usage.CacheCreationPrice = p.CacheCreationPrice
 	usage.OutputPrice = p.OutputPrice
 	usage.InputCost = inputCost
 	usage.CachedInputCost = cachedCost
+	usage.CacheCreationCost = cacheCreation5mCost + cacheCreation1hCost
 	usage.OutputCost = outputCost
+	setUsageMetadataFloat(usage, usageMetaClaudeCacheCreation1hPrice, p.ClaudeCacheCreation1hPrice)
 	recomputeUsageAccountCost(usage)
 
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:         usageMetricInputTokens,
-		Label:       "输入 Token",
-		Kind:        "token",
-		Unit:        "token",
-		Value:       float64(inputTokens),
-		AccountCost: inputCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.InputPrice),
-	})
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:         usageMetricCachedInputTokens,
-		Label:       "缓存输入 Token",
-		Kind:        "token",
-		Unit:        "token",
-		Value:       float64(cachedInputTokens),
-		AccountCost: cachedCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.CachedPrice),
-	})
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:         usageMetricOutputTokens,
-		Label:       "输出 Token",
-		Kind:        "token",
-		Unit:        "token",
-		Value:       float64(outputTokens),
-		AccountCost: outputCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.OutputPrice),
-	})
-	setUsageCostDetail(usage, sdk.UsageCostDetail{
-		Key:         usageCostInput,
-		Label:       "输入 Token",
-		AccountCost: inputCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.InputPrice),
-	})
-	setUsageCostDetail(usage, sdk.UsageCostDetail{
-		Key:         usageCostCachedInput,
-		Label:       "缓存输入 Token",
-		AccountCost: cachedCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.CachedPrice),
-	})
-	setUsageCostDetail(usage, sdk.UsageCostDetail{
-		Key:         usageCostOutput,
-		Label:       "输出 Token",
-		AccountCost: outputCost,
-		Currency:    usageCurrencyUSD,
-		Metadata:    priceMetadata(p.OutputPrice),
-	})
 }
 
 func tokenCost(tokens int, pricePerMillion float64) float64 {
@@ -147,13 +109,6 @@ func tokenCost(tokens int, pricePerMillion float64) float64 {
 		return 0
 	}
 	return float64(tokens) * pricePerMillion / 1_000_000
-}
-
-func priceMetadata(price float64) map[string]string {
-	return map[string]string{
-		"unit_price": fmt.Sprintf("%.10g", price),
-		"unit":       "USD/1M tokens",
-	}
 }
 
 // MapToKiroModel 将 Anthropic 模型名映射到 Kiro 模型 ID 和上下文窗口大小。

@@ -3,6 +3,8 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
@@ -13,14 +15,17 @@ const (
 
 	usageAttrModel = "model"
 
-	usageMetricInputTokens       = "input_tokens"
-	usageMetricCachedInputTokens = "cached_input_tokens"
-	usageMetricOutputTokens      = "output_tokens"
-	usageMetricTotalTokens       = "total_tokens"
+	usageMetricInputTokens           = "input_tokens"
+	usageMetricCachedInputTokens     = "cached_input_tokens"
+	usageMetricCacheCreationTokens   = "cache_creation_input_tokens"
+	usageMetricCacheCreation5mTokens = "cache_creation_5m_input_tokens"
+	usageMetricCacheCreation1hTokens = "cache_creation_1h_input_tokens"
+	usageMetricOutputTokens          = "output_tokens"
+	usageMetricTotalTokens           = "total_tokens"
 
-	usageCostInput       = "input_tokens"
-	usageCostCachedInput = "cached_input_tokens"
-	usageCostOutput      = "output_tokens"
+	usageMetaClaudeCacheCreation5mTokens = "claude.cache_creation_5m_tokens"
+	usageMetaClaudeCacheCreation1hTokens = "claude.cache_creation_1h_tokens"
+	usageMetaClaudeCacheCreation1hPrice  = "claude.cache_creation_1h_price"
 )
 
 func successOutcome(statusCode int, body []byte, headers http.Header, usage *sdk.Usage) sdk.ForwardOutcome {
@@ -86,14 +91,8 @@ func newTokenUsage(modelID string, inputTokens, outputTokens, cachedInputTokens 
 		Currency:     usageCurrencyUSD,
 		FirstTokenMs: firstTokenMs,
 	}
-	setUsageModelAttribute(usage, modelID)
 	setUsageTokens(usage, inputTokens, outputTokens, cachedInputTokens)
 	return usage
-}
-
-func setUsageModelAttribute(usage *sdk.Usage, modelID string) {
-	_ = usage
-	_ = modelID
 }
 
 func setUsageTokens(usage *sdk.Usage, inputTokens, outputTokens, cachedInputTokens int) {
@@ -103,34 +102,6 @@ func setUsageTokens(usage *sdk.Usage, inputTokens, outputTokens, cachedInputToke
 	usage.InputTokens = inputTokens
 	usage.OutputTokens = outputTokens
 	usage.CachedInputTokens = cachedInputTokens
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:   usageMetricInputTokens,
-		Label: "输入 Token",
-		Kind:  "token",
-		Unit:  "token",
-		Value: float64(inputTokens),
-	})
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:   usageMetricCachedInputTokens,
-		Label: "缓存输入 Token",
-		Kind:  "token",
-		Unit:  "token",
-		Value: float64(cachedInputTokens),
-	})
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:   usageMetricOutputTokens,
-		Label: "输出 Token",
-		Kind:  "token",
-		Unit:  "token",
-		Value: float64(outputTokens),
-	})
-	setUsageMetric(usage, sdk.UsageMetric{
-		Key:   usageMetricTotalTokens,
-		Label: "总 Token",
-		Kind:  "token",
-		Unit:  "token",
-		Value: float64(inputTokens + cachedInputTokens + outputTokens),
-	})
 }
 
 func setUsageInputTokens(usage *sdk.Usage, inputTokens int) {
@@ -167,62 +138,61 @@ func usageMetricValue(usage *sdk.Usage, key string) float64 {
 		return float64(usage.InputTokens)
 	case usageMetricCachedInputTokens:
 		return float64(usage.CachedInputTokens)
+	case usageMetricCacheCreationTokens:
+		return float64(usage.CacheCreationTokens)
+	case usageMetricCacheCreation5mTokens:
+		return usageMetadataFloat(usage, usageMetaClaudeCacheCreation5mTokens)
+	case usageMetricCacheCreation1hTokens:
+		return usageMetadataFloat(usage, usageMetaClaudeCacheCreation1hTokens)
 	case usageMetricOutputTokens:
 		return float64(usage.OutputTokens)
 	case usageMetricTotalTokens:
-		return float64(usage.InputTokens + usage.CachedInputTokens + usage.OutputTokens)
+		return float64(usage.InputTokens + usage.CachedInputTokens + usage.CacheCreationTokens + usage.OutputTokens)
 	}
 	return 0
 }
 
-func setUsageAttribute(usage *sdk.Usage, attr sdk.UsageAttribute) {
-	_ = usage
-	_ = attr
-}
-
-func setUsageMetric(usage *sdk.Usage, metric sdk.UsageMetric) {
+func setUsageMetadata(usage *sdk.Usage, key, value string) {
 	if usage == nil {
 		return
 	}
-	for i := range usage.Metrics {
-		if usage.Metrics[i].Key == metric.Key {
-			usage.Metrics[i] = metric
-			return
-		}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return
 	}
-	usage.Metrics = append(usage.Metrics, metric)
+	if usage.Metadata == nil {
+		usage.Metadata = map[string]string{}
+	}
+	usage.Metadata[key] = value
 }
 
-func setUsageCostDetail(usage *sdk.Usage, detail sdk.UsageCostDetail) {
-	if usage == nil {
+func setUsageMetadataInt(usage *sdk.Usage, key string, value int) {
+	if value <= 0 {
 		return
 	}
-	if detail.AccountCost <= 0 {
-		removeUsageCostDetail(usage, detail.Key)
-		return
-	}
-	for i := range usage.CostDetails {
-		if usage.CostDetails[i].Key == detail.Key {
-			usage.CostDetails[i] = detail
-			recomputeUsageAccountCost(usage)
-			return
-		}
-	}
-	usage.CostDetails = append(usage.CostDetails, detail)
-	recomputeUsageAccountCost(usage)
+	setUsageMetadata(usage, key, strconv.Itoa(value))
 }
 
-func removeUsageCostDetail(usage *sdk.Usage, key string) {
-	if usage == nil {
+func setUsageMetadataFloat(usage *sdk.Usage, key string, value float64) {
+	if value <= 0 {
 		return
 	}
-	for i := range usage.CostDetails {
-		if usage.CostDetails[i].Key == key {
-			usage.CostDetails = append(usage.CostDetails[:i], usage.CostDetails[i+1:]...)
-			recomputeUsageAccountCost(usage)
-			return
-		}
+	setUsageMetadata(usage, key, strconv.FormatFloat(value, 'f', -1, 64))
+}
+
+func usageMetadataFloat(usage *sdk.Usage, key string) float64 {
+	if usage == nil {
+		return 0
 	}
+	raw := strings.TrimSpace(usage.Metadata[key])
+	if raw == "" {
+		return 0
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0
+	}
+	return value
 }
 
 func recomputeUsageAccountCost(usage *sdk.Usage) {
