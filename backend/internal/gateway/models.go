@@ -81,6 +81,13 @@ func fillUsageCost(usage *sdk.Usage) {
 	inputCost := tokenCost(inputTokens, p.InputPrice)
 	cachedCost := tokenCost(cachedInputTokens, p.CachedPrice)
 	outputCost := tokenCost(outputTokens, p.OutputPrice)
+	usage.InputPrice = p.InputPrice
+	usage.CachedInputPrice = p.CachedPrice
+	usage.OutputPrice = p.OutputPrice
+	usage.InputCost = inputCost
+	usage.CachedInputCost = cachedCost
+	usage.OutputCost = outputCost
+	recomputeUsageAccountCost(usage)
 
 	setUsageMetric(usage, sdk.UsageMetric{
 		Key:         usageMetricInputTokens,

@@ -92,21 +92,17 @@ func newTokenUsage(modelID string, inputTokens, outputTokens, cachedInputTokens 
 }
 
 func setUsageModelAttribute(usage *sdk.Usage, modelID string) {
-	if usage == nil || modelID == "" {
-		return
-	}
-	setUsageAttribute(usage, sdk.UsageAttribute{
-		Key:   usageAttrModel,
-		Label: "模型",
-		Kind:  "model",
-		Value: modelID,
-	})
+	_ = usage
+	_ = modelID
 }
 
 func setUsageTokens(usage *sdk.Usage, inputTokens, outputTokens, cachedInputTokens int) {
 	if usage == nil {
 		return
 	}
+	usage.InputTokens = inputTokens
+	usage.OutputTokens = outputTokens
+	usage.CachedInputTokens = cachedInputTokens
 	setUsageMetric(usage, sdk.UsageMetric{
 		Key:   usageMetricInputTokens,
 		Label: "输入 Token",
@@ -166,25 +162,22 @@ func usageMetricValue(usage *sdk.Usage, key string) float64 {
 	if usage == nil {
 		return 0
 	}
-	for _, metric := range usage.Metrics {
-		if metric.Key == key {
-			return metric.Value
-		}
+	switch key {
+	case usageMetricInputTokens:
+		return float64(usage.InputTokens)
+	case usageMetricCachedInputTokens:
+		return float64(usage.CachedInputTokens)
+	case usageMetricOutputTokens:
+		return float64(usage.OutputTokens)
+	case usageMetricTotalTokens:
+		return float64(usage.InputTokens + usage.CachedInputTokens + usage.OutputTokens)
 	}
 	return 0
 }
 
 func setUsageAttribute(usage *sdk.Usage, attr sdk.UsageAttribute) {
-	if usage == nil {
-		return
-	}
-	for i := range usage.Attributes {
-		if usage.Attributes[i].Key == attr.Key {
-			usage.Attributes[i] = attr
-			return
-		}
-	}
-	usage.Attributes = append(usage.Attributes, attr)
+	_ = usage
+	_ = attr
 }
 
 func setUsageMetric(usage *sdk.Usage, metric sdk.UsageMetric) {
@@ -236,10 +229,7 @@ func recomputeUsageAccountCost(usage *sdk.Usage) {
 	if usage == nil {
 		return
 	}
-	var total float64
-	for _, detail := range usage.CostDetails {
-		total += detail.AccountCost
-	}
+	total := usage.InputCost + usage.OutputCost + usage.CachedInputCost + usage.CacheCreationCost
 	usage.AccountCost = total
 	usage.Currency = usageCurrencyUSD
 	if total > 0 {
