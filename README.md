@@ -5,8 +5,8 @@
 
   <p>
     <a href="https://github.com/DevilGenius/airgate-kiro/releases"><img src="https://img.shields.io/github/v/release/DevilGenius/airgate-kiro?style=flat-square" alt="release" /></a>
-    <a href="https://github.com/DevilGenius/airgate-kiro/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/DevilGenius/airgate-kiro/ci.yml?branch=apex&style=flat-square&label=CI" alt="ci" /></a>
-    <a href="https://github.com/DevilGenius/airgate-kiro/blob/apex/LICENSE"><img src="https://img.shields.io/github/license/DevilGenius/airgate-kiro?style=flat-square" alt="license" /></a>
+    <a href="https://github.com/DevilGenius/airgate-kiro/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/DevilGenius/airgate-kiro/ci.yml?branch=master&style=flat-square&label=CI" alt="ci" /></a>
+    <a href="https://github.com/DevilGenius/airgate-kiro/blob/master/LICENSE"><img src="https://img.shields.io/github/license/DevilGenius/airgate-kiro?style=flat-square" alt="license" /></a>
     <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&logo=go" alt="go" />
     <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="react" />
   </p>
