@@ -4,9 +4,9 @@
   <p><strong>Kiro (AWS CodeWhisperer) 反代网关插件</strong></p>
 
   <p>
-    <a href="https://github.com/DouDOU-start/airgate-kiro/releases"><img src="https://img.shields.io/github/v/release/DouDOU-start/airgate-kiro?style=flat-square" alt="release" /></a>
-    <a href="https://github.com/DouDOU-start/airgate-kiro/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/DouDOU-start/airgate-kiro/ci.yml?branch=master&style=flat-square&label=CI" alt="ci" /></a>
-    <a href="https://github.com/DouDOU-start/airgate-kiro/blob/master/LICENSE"><img src="https://img.shields.io/github/license/DouDOU-start/airgate-kiro?style=flat-square" alt="license" /></a>
+    <a href="https://github.com/DevilGenius/airgate-kiro/releases"><img src="https://img.shields.io/github/v/release/DevilGenius/airgate-kiro?style=flat-square" alt="release" /></a>
+    <a href="https://github.com/DevilGenius/airgate-kiro/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/DevilGenius/airgate-kiro/ci.yml?branch=apex&style=flat-square&label=CI" alt="ci" /></a>
+    <a href="https://github.com/DevilGenius/airgate-kiro/blob/apex/LICENSE"><img src="https://img.shields.io/github/license/DevilGenius/airgate-kiro?style=flat-square" alt="license" /></a>
     <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&logo=go" alt="go" />
     <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="react" />
   </p>
@@ -14,7 +14,7 @@
 
 ---
 
-[airgate-core](https://github.com/DouDOU-start/airgate-core) 的 Kiro 网关插件，基于 [airgate-sdk](https://github.com/DouDOU-start/airgate-sdk) 实现。它将 Kiro (AWS CodeWhisperer) 服务以 Anthropic Messages API 兼容接口暴露，让 Claude Code 等客户端可以直接通过 Kiro 账号调用。
+[airgate-core](https://github.com/DevilGenius/airgate-core) 的 Kiro 网关插件，基于 [airgate-sdk](https://github.com/DevilGenius/airgate-sdk) 实现。它将 Kiro (AWS CodeWhisperer) 服务以 Anthropic Messages API 兼容接口暴露，让 Claude Code 等客户端可以直接通过 Kiro 账号调用。
 
 核心能力：**用 Kiro 免费账号池服务 Anthropic Messages API 客户端**，支持 OAuth 浏览器授权、BuilderID 设备授权、IdC (AWS SSO) 手动导入、API Key 四种账号接入方式。
 
@@ -97,7 +97,7 @@
 ```text
 1. 插件市场 → 点击「安装」               （从 GitHub Release 自动拉取）
 2. 上传安装 → 拖入二进制文件              （适合内部环境）
-3. GitHub 安装 → 输入 DouDOU-start/airgate-kiro
+3. GitHub 安装 → 输入 DevilGenius/airgate-kiro
 ```
 
 ### 方式 2：源码运行（开发）
@@ -105,9 +105,9 @@
 需要 Go 1.25+、Node 22+，以及兄弟目录 `airgate-sdk` 与 `airgate-core`：
 
 ```bash
-git clone https://github.com/DouDOU-start/airgate-sdk.git
-git clone https://github.com/DouDOU-start/airgate-core.git
-git clone https://github.com/DouDOU-start/airgate-kiro.git
+git clone https://github.com/DevilGenius/airgate-sdk.git
+git clone https://github.com/DevilGenius/airgate-core.git
+git clone https://github.com/DevilGenius/airgate-kiro.git
 ```
 
 把本插件以 dev 模式挂到 core：
@@ -159,9 +159,9 @@ git push origin v1.0.0
 
 ## 🤝 相关仓库
 
-- 主仓库: [airgate-core](https://github.com/DouDOU-start/airgate-core)
-- 插件 SDK: [airgate-sdk](https://github.com/DouDOU-start/airgate-sdk)
-- OpenAI 插件: [airgate-openai](https://github.com/DouDOU-start/airgate-openai)
+- 主仓库: [airgate-core](https://github.com/DevilGenius/airgate-core)
+- 插件 SDK: [airgate-sdk](https://github.com/DevilGenius/airgate-sdk)
+- OpenAI 插件: [airgate-openai](https://github.com/DevilGenius/airgate-openai)
 
 ## 📜 License
 

@@ -9,8 +9,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/DouDOU-start/airgate-kiro/backend/internal/gateway"
-	sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
+	"github.com/DevilGenius/airgate-kiro/backend/internal/gateway"
+	sdk "github.com/DevilGenius/airgate-sdk/sdkgo"
 )
 
 const generatedComment = "# 本文件由 backend/cmd/genmanifest 自动生成，请勿手工修改。\n\n"

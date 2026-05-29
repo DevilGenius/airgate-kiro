@@ -1,6 +1,6 @@
 package gateway
 
-import sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
+import sdk "github.com/DevilGenius/airgate-sdk/sdkgo"
 
 //go:generate go run ../../cmd/genmanifest
 

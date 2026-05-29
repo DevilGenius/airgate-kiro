@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	sdk "github.com/DouDOU-start/airgate-sdk/sdkgo"
+	sdk "github.com/DevilGenius/airgate-sdk/sdkgo"
 )
 
 func TestClassifyHTTPFailure_ModelUnsupportedBeatsForbidden(t *testing.T) {

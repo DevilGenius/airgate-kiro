@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { cssVar } from '@doudou-start/airgate-theme';
+import { cssVar } from '@devilgenius/airgate-theme';
 
 export interface AccountFormProps {
   credentials: Record<string, string>;

@@ -2,7 +2,7 @@ import { AccountForm } from './components/AccountForm';
 import { UsageCostDetail } from './components/UsageCostDetail';
 import { UsageModelMeta } from './components/UsageModelMeta';
 import { UsageWindow } from './components/UsageWindow';
-import type { PluginFrontendModule } from '@doudou-start/airgate-theme/plugin';
+import type { PluginFrontendModule } from '@devilgenius/airgate-theme/plugin';
 
 const plugin: PluginFrontendModule = {
   accountCreate: AccountForm,
