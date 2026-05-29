@@ -82,7 +82,7 @@
 
 | 层 | 技术 |
 |---|---|
-| 后端 | Go 1.25 · gRPC · gjson/sjson · AWS Event Stream 二进制协议 |
+| 后端 | Go 1.26.3 · gRPC · gjson/sjson · AWS Event Stream 二进制协议 |
 | 前端 | React 19 · Vite · TypeScript（账号表单 Widget） |
 | 插件协议 | hashicorp/go-plugin (gRPC) |
 | 认证 | Kiro OAuth PKCE · AWS SSO OIDC Device Authorization Grant |
@@ -102,7 +102,7 @@
 
 ### 方式 2：源码运行（开发）
 
-需要 Go 1.25+、Node 22+，以及兄弟目录 `airgate-sdk` 与 `airgate-core`：
+需要 Go 1.26.3+、Node 22+，以及兄弟目录 `airgate-sdk` 与 `airgate-core`：
 
 ```bash
 git clone https://github.com/DevilGenius/airgate-sdk.git
