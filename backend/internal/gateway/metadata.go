@@ -4,7 +4,7 @@ import sdk "github.com/DevilGenius/airgate-sdk/sdkgo"
 
 //go:generate go run ../../cmd/genmanifest
 
-var PluginVersion = "1.0.0"
+var PluginVersion = "dev"
 
 const (
 	PluginID             = "gateway-kiro"
