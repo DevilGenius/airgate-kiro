@@ -10,6 +10,7 @@ const EFFORT_COLORS: Record<string, string> = {
   medium: 'rgb(59,130,246)',
   high: 'rgb(249,115,22)',
   xhigh: 'rgb(239,68,68)',
+  max: 'rgb(239,68,68)',
 };
 
 function chipStyle(color: string): CSSProperties {
