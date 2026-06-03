@@ -34,11 +34,12 @@ func resolveMachineID(account *sdk.Account) string {
 
 func normalizeMachineID(mid string) string {
 	cleaned := strings.ReplaceAll(mid, "-", "")
+	if cleaned == "" {
+		return sha256Hex("KiroMachineID/empty")
+	}
 	if len(cleaned) < 64 {
-		for len(cleaned) < 64 {
-			cleaned += cleaned
-		}
-		cleaned = cleaned[:64]
+		repeat := (64 + len(cleaned) - 1) / len(cleaned)
+		cleaned = strings.Repeat(cleaned, repeat)[:64]
 	}
 	if len(cleaned) > 64 {
 		cleaned = cleaned[:64]

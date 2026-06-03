@@ -155,7 +155,7 @@ func convertRequest(body []byte, account *sdk.Account, cfg convertConfig, logger
 				contentTypes = append(contentTypes, fmt.Sprintf("text(%d chars)", len(block.Get("text").String())))
 			case "tool_result":
 				trContent := block.Get("content").String()
-				contentTypes = append(contentTypes, fmt.Sprintf("tool_result(id=%s, %d chars)", block.Get("tool_use_id").String()[:8], len(trContent)))
+				contentTypes = append(contentTypes, fmt.Sprintf("tool_result(id=%.8s, %d chars)", block.Get("tool_use_id").String(), len(trContent)))
 			case "image":
 				contentTypes = append(contentTypes, "image")
 			default:

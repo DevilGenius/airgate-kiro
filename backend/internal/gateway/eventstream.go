@@ -10,20 +10,21 @@ import (
 )
 
 const (
-	preludeLen       = 12 // totalLen(4) + headerLen(4) + preludeCRC(4)
-	messageCRCLen    = 4
-	minMessageLen    = 16 // prelude(12) + messageCRC(4)
-	maxMessageLen    = 16 * 1024 * 1024
-	maxConsecErrors  = 5
+	preludeLen      = 12 // totalLen(4) + headerLen(4) + preludeCRC(4)
+	messageCRCLen   = 4
+	minMessageLen   = 16 // prelude(12) + messageCRC(4)
+	maxMessageLen   = 16 * 1024 * 1024
+	maxConsecErrors = 5
 
 	headerTypeString = 7
 )
 
 var (
-	ErrTooManyErrors = errors.New("eventstream: too many consecutive decode errors")
-	ErrMessageTooBig = errors.New("eventstream: message exceeds 16MB limit")
-	ErrPreludeCRC    = errors.New("eventstream: prelude CRC mismatch")
-	ErrMessageCRC    = errors.New("eventstream: message CRC mismatch")
+	ErrTooManyErrors  = errors.New("eventstream: too many consecutive decode errors")
+	ErrMessageTooBig  = errors.New("eventstream: message exceeds 16MB limit")
+	ErrPreludeCRC     = errors.New("eventstream: prelude CRC mismatch")
+	ErrMessageCRC     = errors.New("eventstream: message CRC mismatch")
+	ErrMalformedFrame = errors.New("eventstream: malformed frame")
 )
 
 // KiroEvent 从 AWS Event Stream 帧中解析出的事件。
@@ -111,12 +112,12 @@ func (d *EventStreamDecoder) decodeFrame() (*KiroEvent, error) {
 		return nil, ErrMessageCRC
 	}
 
-	headerData := d.buf[:headerLen]
 	payloadEnd := remainLen - messageCRCLen
-	var payload []byte
-	if int(headerLen) < payloadEnd {
-		payload = d.buf[headerLen:payloadEnd]
+	if payloadEnd < 0 || int(headerLen) > payloadEnd {
+		return nil, ErrMalformedFrame
 	}
+	headerData := d.buf[:int(headerLen)]
+	payload := d.buf[int(headerLen):payloadEnd]
 
 	headers, err := parseHeaders(headerData)
 	if err != nil {
