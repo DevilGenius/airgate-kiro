@@ -1,5 +1,5 @@
-github.com/DevilGenius/airgate-sdk v0.2.2 h1:sw9YbbQGpYQwUfm7BmOpcArqSnasEeAqUNO/TEbE0+0=
-github.com/DevilGenius/airgate-sdk v0.2.2/go.mod h1:EnjPPVBiONFv0gcQqiBPqs86HRhcVKICdFaB03yJcI8=
+github.com/DevilGenius/airgate-sdk v0.2.3 h1:Y7nhSioMbvnr/rNjuigYaOweC8NJEB0AcWvibwm8YBE=
+github.com/DevilGenius/airgate-sdk v0.2.3/go.mod h1:EnjPPVBiONFv0gcQqiBPqs86HRhcVKICdFaB03yJcI8=
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
 github.com/bufbuild/protocompile v0.14.1/go.mod h1:ppVdAIhbr2H8asPk6k4pY7t9zB1OU5DoEw9xY/FUi1c=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
