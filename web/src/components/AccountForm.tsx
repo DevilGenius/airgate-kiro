@@ -51,15 +51,36 @@ const cardStyle: React.CSSProperties = {
   borderStyle: 'solid',
   borderColor: cssVar('border'),
   borderRadius: cssVar('radiusLg'),
-  padding: '1rem',
+  padding: '0.5rem 0.75rem',
   cursor: 'pointer',
+  lineHeight: 1.2,
   transition: 'border-color 0.2s, background-color 0.2s',
 };
 
 const cardActiveStyle: React.CSSProperties = {
-  ...cardStyle,
+  borderWidth: '1px',
+  borderStyle: 'solid',
   borderColor: cssVar('primary'),
+  borderRadius: cssVar('radiusLg'),
+  padding: '0.5rem 0.75rem',
+  cursor: 'pointer',
+  lineHeight: 1.2,
+  transition: 'border-color 0.2s, background-color 0.2s',
   backgroundColor: cssVar('primarySubtle'),
+};
+
+const accountTypeTitleStyle: React.CSSProperties = {
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  color: cssVar('text'),
+  lineHeight: 1.2,
+};
+
+const accountTypeDescStyle: React.CSSProperties = {
+  fontSize: '0.6875rem',
+  color: cssVar('textTertiary'),
+  lineHeight: 1.2,
+  marginTop: '0.125rem',
 };
 
 type AccountType = 'oauth' | 'api_key';
@@ -267,7 +288,7 @@ export function AccountForm({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* 账号类型选择 */}
       {mode === 'create' && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           {([
             ['oauth', 'OAuth 授权', '浏览器登录或批量导入凭证'],
             ['api_key', 'API Key', 'Kiro API Key 直连'],
@@ -277,8 +298,8 @@ export function AccountForm({
               style={currentType === type ? cardActiveStyle : cardStyle}
               onClick={() => selectType(type)}
             >
-              <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{label}</div>
-              <div style={{ fontSize: '0.75rem', color: cssVar('textSecondary'), marginTop: '0.25rem' }}>{desc}</div>
+              <div style={accountTypeTitleStyle}>{label}</div>
+              <div style={accountTypeDescStyle}>{desc}</div>
             </div>
           ))}
         </div>
