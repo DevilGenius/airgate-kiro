@@ -13,8 +13,6 @@ import (
 const (
 	usageCurrencyUSD = "USD"
 
-	usageAttrModel = "model"
-
 	usageMetricInputTokens           = "input_tokens"
 	usageMetricCachedInputTokens     = "cached_input_tokens"
 	usageMetricCacheCreationTokens   = "cache_creation_input_tokens"
