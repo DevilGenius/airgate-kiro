@@ -1,5 +1,7 @@
 # Dependencies
 web/node_modules/
+web/.pnpm-store/
+web/.pnpm-store-tmp/
 
 # Build output
 bin/
