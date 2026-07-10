@@ -5,12 +5,17 @@ type UsageContext = {
   reasoning_effort?: string;
 };
 
+const EFFORT_MAX_COLOR = 'rgb(148,163,184)';
+const EFFORT_ULTRA_COLOR = 'var(--ag-text)';
+const EFFORT_FALLBACK_COLOR = 'var(--ag-text-secondary)';
+
 const EFFORT_COLORS: Record<string, string> = {
   low: 'rgb(34,197,94)',
   medium: 'rgb(59,130,246)',
   high: 'rgb(249,115,22)',
   xhigh: 'rgb(239,68,68)',
-  max: 'rgb(239,68,68)',
+  max: EFFORT_MAX_COLOR,
+  ultra: EFFORT_ULTRA_COLOR,
 };
 
 function chipStyle(color: string): CSSProperties {
@@ -25,7 +30,7 @@ export function UsageModelMeta(props: UsageRecordSurfaceProps) {
   const ctx = (props.context ?? {}) as UsageContext;
   if (!ctx.reasoning_effort) return null;
 
-  const color = EFFORT_COLORS[ctx.reasoning_effort] ?? 'rgb(148,163,184)';
+  const color = EFFORT_COLORS[ctx.reasoning_effort] ?? EFFORT_FALLBACK_COLOR;
 
   return (
     <span
