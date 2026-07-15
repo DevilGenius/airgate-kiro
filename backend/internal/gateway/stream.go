@@ -34,6 +34,7 @@ type SSEConverter struct {
 
 	usage *sdk.Usage
 
+	firstEventOnce bool
 	firstTokenOnce bool
 	startTime      time.Time
 }
@@ -75,6 +76,7 @@ func streamKiroToSSE(ctx context.Context, body io.Reader, w http.ResponseWriter,
 			}
 			return streamAbortedOutcome(http.StatusOK, fmt.Sprintf("decode error: %v", err), conv.usage)
 		}
+		conv.recordFirstEvent()
 
 		switch event.MessageType {
 		case "event":
@@ -365,6 +367,13 @@ func (c *SSEConverter) recordFirstToken() {
 	}
 }
 
+func (c *SSEConverter) recordFirstEvent() {
+	if !c.firstEventOnce {
+		c.firstEventOnce = true
+		c.usage.FirstEventMs = time.Since(c.startTime).Milliseconds()
+	}
+}
+
 // bufferKiroResponse 非流式模式：收集所有事件后构建完整 Anthropic JSON 响应。
 func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWriter, convertCtx *ConvertContext, start time.Time) sdk.ForwardOutcome {
 	decoder := NewEventStreamDecoder(body)
@@ -372,12 +381,20 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 	var contentBlocks []any
 	var inputTokens int
 	outputTokens := 0
+	var firstEventMs int64
+	var firstTokenMs int64
+	firstEventRecorded := false
+	firstTokenRecorded := false
 	stopReason := "end_turn"
 
 	for {
 		event, err := decoder.Next()
 		if err != nil {
 			break
+		}
+		if !firstEventRecorded {
+			firstEventMs = time.Since(start).Milliseconds()
+			firstEventRecorded = true
 		}
 
 		if event.MessageType != "event" {
@@ -391,6 +408,10 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 		case "assistantResponseEvent":
 			text := ParseAssistantResponsePayload(event.Payload)
 			if text != "" {
+				if !firstTokenRecorded {
+					firstTokenMs = time.Since(start).Milliseconds()
+					firstTokenRecorded = true
+				}
 				contentBlocks = append(contentBlocks, map[string]string{
 					"type": "text",
 					"text": text,
@@ -401,6 +422,10 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 			tu, err := ParseToolUsePayload(event.Payload)
 			if err != nil {
 				continue
+			}
+			if !firstTokenRecorded {
+				firstTokenMs = time.Since(start).Milliseconds()
+				firstTokenRecorded = true
 			}
 			if tu.Stop {
 				stopReason = "tool_use"
@@ -451,7 +476,8 @@ func bufferKiroResponse(ctx context.Context, body io.Reader, w http.ResponseWrit
 		_, _ = w.Write(respBody)
 	}
 
-	usage := newTokenUsage(convertCtx.AnthropicModel, inputTokens, outputTokens, 0, time.Since(start).Milliseconds())
+	usage := newTokenUsage(convertCtx.AnthropicModel, inputTokens, outputTokens, 0, firstEventMs)
+	usage.FirstTokenMs = firstTokenMs
 
 	applyCacheToUsage(usage, convertCtx)
 	fillUsageCost(usage)

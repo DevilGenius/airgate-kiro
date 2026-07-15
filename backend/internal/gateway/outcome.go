@@ -83,11 +83,11 @@ func streamAbortedOutcome(statusCode int, reason string, usage *sdk.Usage) sdk.F
 	}
 }
 
-func newTokenUsage(modelID string, inputTokens, outputTokens, cachedInputTokens int, firstTokenMs int64) *sdk.Usage {
+func newTokenUsage(modelID string, inputTokens, outputTokens, cachedInputTokens int, firstEventMs int64) *sdk.Usage {
 	usage := &sdk.Usage{
 		Model:        modelID,
 		Currency:     usageCurrencyUSD,
-		FirstTokenMs: firstTokenMs,
+		FirstEventMs: firstEventMs,
 	}
 	setUsageTokens(usage, inputTokens, outputTokens, cachedInputTokens)
 	return usage

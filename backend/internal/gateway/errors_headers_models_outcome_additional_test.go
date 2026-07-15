@@ -321,7 +321,7 @@ func TestOutcomeHelpers(t *testing.T) {
 	}
 
 	tu := newTokenUsage("model", 10, 20, 3, 7)
-	if tu.Model != "model" || tu.InputTokens != 10 || tu.OutputTokens != 20 || tu.CachedInputTokens != 3 || tu.FirstTokenMs != 7 {
+	if tu.Model != "model" || tu.InputTokens != 10 || tu.OutputTokens != 20 || tu.CachedInputTokens != 3 || tu.FirstEventMs != 7 {
 		t.Fatalf("token usage mismatch: %+v", tu)
 	}
 	setUsageTokens(nil, 1, 2, 3)

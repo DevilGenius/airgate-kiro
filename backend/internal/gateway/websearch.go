@@ -326,6 +326,7 @@ func streamWebSearchSSE(w http.ResponseWriter, results *webSearchResults, query,
 	msgID := "msg_" + uuid.New().String()[:24]
 	toolUseID := "srvtoolu_" + uuid.New().String()[:24]
 	outputTokens := 0
+	firstEventMs := time.Since(start).Milliseconds()
 
 	// Event 1: message_start
 	emit("message_start", fmt.Sprintf(
@@ -339,6 +340,7 @@ func streamWebSearchSSE(w http.ResponseWriter, results *webSearchResults, query,
 
 	emit("content_block_start",
 		`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`)
+	firstTokenMs := time.Since(start).Milliseconds()
 	emit("content_block_delta", fmt.Sprintf(
 		`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":%s}}`,
 		jsonString(searchText),
@@ -380,7 +382,8 @@ func streamWebSearchSSE(w http.ResponseWriter, results *webSearchResults, query,
 	))
 	emit("message_stop", `{"type":"message_stop"}`)
 
-	usage := newTokenUsage(model, inputTokens, outputTokens, 0, time.Since(start).Milliseconds())
+	usage := newTokenUsage(model, inputTokens, outputTokens, 0, firstEventMs)
+	usage.FirstTokenMs = firstTokenMs
 	fillUsageCost(usage)
 
 	return sdk.ForwardOutcome{
@@ -437,7 +440,9 @@ func bufferWebSearchResponse(w http.ResponseWriter, results *webSearchResults, q
 		_, _ = w.Write(respBody)
 	}
 
-	usage := newTokenUsage(model, inputTokens, outputTokens, 0, time.Since(start).Milliseconds())
+	elapsed := time.Since(start).Milliseconds()
+	usage := newTokenUsage(model, inputTokens, outputTokens, 0, elapsed)
+	usage.FirstTokenMs = elapsed
 	fillUsageCost(usage)
 
 	return sdk.ForwardOutcome{
