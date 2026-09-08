@@ -368,13 +368,17 @@ func TestHandleRequestOAuthCompletionBranches(t *testing.T) {
 			return httpResp(http.StatusOK, tokenBody), nil
 		})},
 	}
-	g.oauthStore.put("sess", &OAuthSession{State: "state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("sess", &OAuthSession{State: "state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err := g.HandleRequest(context.Background(), http.MethodPost, "oauth/exchange", "", nil, []byte(`{"callback_url":"?state=state&code=code"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "oauth@example.com") {
 		t.Fatalf("oauth exchange completion status=%d err=%v body=%s", status, err, string(body))
 	}
 
-	g.oauthStore.put("poll", &OAuthSession{State: "poll-state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("poll", &OAuthSession{State: "poll-state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/status", "", nil, []byte(`{"session_id":"poll"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "pending") {
 		t.Fatalf("oauth poll pending status=%d err=%v body=%s", status, err, string(body))
@@ -388,7 +392,9 @@ func TestHandleRequestOAuthCompletionBranches(t *testing.T) {
 	g.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusBadRequest, `{"error":"authorization_pending"}`), nil
 	})}
-	g.oauthStore.put("device", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"})
+	if err := g.oauthStore.put("device", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/device-complete", "", nil, []byte(`{"session_id":"device"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "pending") {
 		t.Fatalf("device pending status=%d err=%v body=%s", status, err, string(body))
@@ -397,7 +403,9 @@ func TestHandleRequestOAuthCompletionBranches(t *testing.T) {
 	g.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusOK, `{"accessToken":"`+jwtWithClaims(map[string]any{"email": "device@example.com"})+`","refreshToken":"refresh","expiresIn":60}`), nil
 	})}
-	g.oauthStore.put("device-done", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"})
+	if err := g.oauthStore.put("device-done", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/device-complete", "", nil, []byte(`{"session_id":"device-done"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "device@example.com") {
 		t.Fatalf("device complete status=%d err=%v body=%s", status, err, string(body))
@@ -413,13 +421,17 @@ func TestHandleRequestOAuthCompletionBranches(t *testing.T) {
 			return httpResp(http.StatusOK, tokenBody), nil
 		}
 	})}
-	g.oauthStore.put("builder", &OAuthSession{State: "builder-state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("builder", &OAuthSession{State: "builder-state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/exchange", "", nil, []byte(`{"callback_url":"?state=builder-state&login_option=builderid&issuer_url=https://issuer"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "__device_auth__") {
 		t.Fatalf("builder exchange status=%d err=%v body=%s", status, err, string(body))
 	}
 
-	g.oauthStore.put("poll-builder", &OAuthSession{State: "poll-builder-state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("poll-builder", &OAuthSession{State: "poll-builder-state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	g.callbackLn.captured.Store("poll-builder-state", kiroCallbackBaseURL+"/oauth/callback?state=poll-builder-state&login_option=builderid&issuer_url=https://issuer")
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/status", "", nil, []byte(`{"session_id":"poll-builder"}`))
 	if err != nil || status != http.StatusOK || !strings.Contains(string(body), "device_auth") {
@@ -429,18 +441,24 @@ func TestHandleRequestOAuthCompletionBranches(t *testing.T) {
 	g.client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusBadRequest, "bad"), nil
 	})}
-	g.oauthStore.put("bad-exchange", &OAuthSession{State: "bad-state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("bad-exchange", &OAuthSession{State: "bad-state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/exchange", "", nil, []byte(`{"callback_url":"?state=bad-state&code=code"}`))
 	if err != nil || status != http.StatusBadRequest {
 		t.Fatalf("bad exchange status=%d err=%v body=%s", status, err, string(body))
 	}
-	g.oauthStore.put("bad-poll", &OAuthSession{State: "bad-poll-state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := g.oauthStore.put("bad-poll", &OAuthSession{State: "bad-poll-state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	g.callbackLn.captured.Store("bad-poll-state", kiroCallbackBaseURL+"/oauth/callback?state=bad-poll-state&code=code")
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/status", "", nil, []byte(`{"session_id":"bad-poll"}`))
 	if err != nil || status != http.StatusBadRequest {
 		t.Fatalf("bad poll status=%d err=%v body=%s", status, err, string(body))
 	}
-	g.oauthStore.put("device-error", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"})
+	if err := g.oauthStore.put("device-error", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"}); err != nil {
+		t.Fatal(err)
+	}
 	status, _, body, err = g.HandleRequest(context.Background(), http.MethodPost, "oauth/device-complete", "", nil, []byte(`{"session_id":"device-error"}`))
 	if err != nil || status != http.StatusBadRequest || !strings.Contains(string(body), "device token HTTP") {
 		t.Fatalf("device error status=%d err=%v body=%s", status, err, string(body))

@@ -19,7 +19,9 @@ import (
 func TestOAuthSessionStoreLifecycle(t *testing.T) {
 	store := newOAuthSessionStore()
 	store.sessions["old"] = &OAuthSession{State: "old", CreatedAt: time.Now().Add(-oauthSessionTTL - time.Minute)}
-	store.put("fresh", &OAuthSession{State: "state", CreatedAt: time.Now()})
+	if err := store.put("fresh", &OAuthSession{State: "state", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	if _, ok := store.get("old"); ok {
 		t.Fatal("old session should be expired")
 	}
@@ -175,7 +177,9 @@ func TestExchangeCodeForTokenResponseShapes(t *testing.T) {
 
 func TestExchangeCallbackByURLSocialAndErrors(t *testing.T) {
 	store := newOAuthSessionStore()
-	store.put("sess", &OAuthSession{State: "state", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := store.put("sess", &OAuthSession{State: "state", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusOK, `{"accessToken":"`+jwtWithClaims(map[string]any{"email": "jwt@example.com"})+`","refreshToken":"refresh","expiresIn":60}`), nil
 	})}
@@ -199,19 +203,25 @@ func TestExchangeCallbackByURLSocialAndErrors(t *testing.T) {
 	}
 
 	store = newOAuthSessionStore()
-	store.put("sess", &OAuthSession{State: "state", CreatedAt: time.Now()})
+	if err := store.put("sess", &OAuthSession{State: "state", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := exchangeCallbackByURL(context.Background(), store, "?state=state&login_option=external_idp", client); err == nil {
 		t.Fatal("external_idp without code should fail")
 	}
 
 	store = newOAuthSessionStore()
-	store.put("sess", &OAuthSession{State: "state", CreatedAt: time.Now()})
+	if err := store.put("sess", &OAuthSession{State: "state", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := exchangeCallbackByURL(context.Background(), store, "?state=state", client); err == nil {
 		t.Fatal("callback without code should fail")
 	}
 
 	store = newOAuthSessionStore()
-	store.put("idc", &OAuthSession{State: "idc-state", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1", CodeVerifier: "verifier", CreatedAt: time.Now()})
+	if err := store.put("idc", &OAuthSession{State: "idc-state", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1", CodeVerifier: "verifier", CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	idcClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusOK, `{"accessToken":"idc","refreshToken":"refresh","expiresIn":60}`), nil
 	})}
@@ -289,12 +299,16 @@ func TestPollDeviceTokenAndIDCExchange(t *testing.T) {
 	if _, err := pollDeviceToken(context.Background(), store, "missing", &http.Client{}); err == nil {
 		t.Fatal("missing device session should fail")
 	}
-	store.put("not-device", &OAuthSession{CreatedAt: time.Now()})
+	if err := store.put("not-device", &OAuthSession{CreatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := pollDeviceToken(context.Background(), store, "not-device", &http.Client{}); err == nil {
 		t.Fatal("non-device session should fail")
 	}
 
-	store.put("pending", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"})
+	if err := store.put("pending", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"}); err != nil {
+		t.Fatal(err)
+	}
 	pendingClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusBadRequest, `{"error":"authorization_pending"}`), nil
 	})}
@@ -302,7 +316,9 @@ func TestPollDeviceTokenAndIDCExchange(t *testing.T) {
 		t.Fatalf("pending device token err = %v", err)
 	}
 
-	store.put("done", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"})
+	if err := store.put("done", &OAuthSession{CreatedAt: time.Now(), DeviceCode: "device", ClientID: "client", ClientSecret: "secret", IDCRegion: "us-east-1"}); err != nil {
+		t.Fatal(err)
+	}
 	successClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		return httpResp(http.StatusOK, `{"accessToken":"`+jwtWithClaims(map[string]any{"email": "device@example.com"})+`","refreshToken":"refresh","expiresIn":60}`), nil
 	})}
@@ -344,10 +360,10 @@ func TestPollDeviceTokenAndIDCExchange(t *testing.T) {
 	if _, err := exchangeIDCCode(context.Background(), "code", sess, transportClient); err == nil {
 		t.Fatal("IDC transport error should fail")
 	}
-	if _, err := pollDeviceToken(context.Background(), storeWithDeviceSession("http-error"), "http-error", httpErrorClient); err == nil {
+	if _, err := pollDeviceToken(context.Background(), storeWithDeviceSession(t, "http-error"), "http-error", httpErrorClient); err == nil {
 		t.Fatal("device token HTTP error should fail")
 	}
-	if _, err := pollDeviceToken(context.Background(), storeWithDeviceSession("empty"), "empty", badClient); err == nil {
+	if _, err := pollDeviceToken(context.Background(), storeWithDeviceSession(t, "empty"), "empty", badClient); err == nil {
 		t.Fatal("device token empty access token should fail")
 	}
 }
@@ -525,14 +541,17 @@ func jwtWithClaims(claims map[string]any) string {
 	return "header." + base64.RawURLEncoding.EncodeToString(payload) + ".sig"
 }
 
-func storeWithDeviceSession(sessionID string) *oauthSessionStore {
+func storeWithDeviceSession(t *testing.T, sessionID string) *oauthSessionStore {
+	t.Helper()
 	store := newOAuthSessionStore()
-	store.put(sessionID, &OAuthSession{
+	if err := store.put(sessionID, &OAuthSession{
 		CreatedAt:    time.Now(),
 		DeviceCode:   "device",
 		ClientID:     "client",
 		ClientSecret: "secret",
 		IDCRegion:    "us-east-1",
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 	return store
 }

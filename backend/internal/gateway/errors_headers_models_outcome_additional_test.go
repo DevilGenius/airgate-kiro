@@ -232,7 +232,7 @@ func TestPluginMetadataModelsAndRoutes(t *testing.T) {
 	if len(g.Routes()) != 3 {
 		t.Fatalf("routes len = %d", len(g.Routes()))
 	}
-	if err := g.Start(nil); err != nil {
+	if err := g.Start(t.Context()); err != nil {
 		t.Fatalf("Start returned error: %v", err)
 	}
 
