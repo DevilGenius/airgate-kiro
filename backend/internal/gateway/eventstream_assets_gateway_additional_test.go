@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -137,60 +138,17 @@ func buildEventStreamFrameFromRawHeader(header, payload []byte) []byte {
 }
 
 func TestAssetsLoading(t *testing.T) {
-	if got := loadAssetsFromDir(filepath.Join(t.TempDir(), "missing")); got != nil {
-		t.Fatalf("missing assets dir = %#v", got)
-	}
-	empty := t.TempDir()
-	if got := loadAssetsFromDir(empty); got != nil {
-		t.Fatalf("empty assets dir = %#v", got)
-	}
-
+	before := (&KiroGateway{}).GetWebAssets()
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "nested"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "web", "dist"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "nested", "app.js"), []byte("console.log(1)"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "web", "dist", "index.js"), []byte("wrong project"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	assets := loadAssetsFromDir(root)
-	if string(assets["nested/app.js"]) != "console.log(1)" {
-		t.Fatalf("assets = %#v", assets)
-	}
-
-	project := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(project, "web", "dist"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(project, "web", "dist", "index.js"), []byte("dev"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(project)
-	if devAssets := loadDevWebAssets(); string(devAssets["index.js"]) != "dev" {
-		t.Fatalf("dev assets = %#v", devAssets)
-	}
-	if webAssets := (&KiroGateway{}).GetWebAssets(); string(webAssets["index.js"]) != "dev" {
-		t.Fatalf("web assets = %#v", webAssets)
-	}
-
-	project = t.TempDir()
-	if err := os.MkdirAll(filepath.Join(project, "web", "dist"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(project, "web", "dist", "first.js"), []byte("first"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	backendDir := filepath.Join(project, "backend")
-	if err := os.MkdirAll(backendDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(backendDir)
-	if devAssets := loadDevWebAssets(); string(devAssets["first.js"]) != "first" {
-		t.Fatalf("first dev assets path = %#v", devAssets)
-	}
-
-	t.Chdir(t.TempDir())
-	if fallback := (&KiroGateway{}).GetWebAssets(); len(fallback) == 0 || len(fallback["placeholder.txt"]) != 0 {
-		t.Fatalf("embedded fallback assets = %#v", fallback)
+	t.Chdir(root)
+	if after := (&KiroGateway{}).GetWebAssets(); !reflect.DeepEqual(before, after) {
+		t.Fatal("working directory changed embedded assets")
 	}
 }
 

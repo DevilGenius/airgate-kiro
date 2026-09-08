@@ -38,7 +38,9 @@ type KiroGateway struct {
 }
 
 func (g *KiroGateway) Info() sdk.PluginInfo {
-	return buildPluginInfo()
+	info := buildPluginInfo()
+	info.Capabilities = append(info.Capabilities, sdk.CapabilityForHostMethod(sdk.RuntimeStateMethod))
+	return info
 }
 
 func (g *KiroGateway) Init(ctx sdk.PluginContext) error {
@@ -47,6 +49,16 @@ func (g *KiroGateway) Init(ctx sdk.PluginContext) error {
 	g.headerCfg = defaultHeaderConfig(ctx)
 	g.tokenMgr = newTokenManager(g.logger, g.headerCfg)
 	g.oauthStore = newOAuthSessionStore()
+	if hostAware, ok := ctx.(sdk.HostAware); ok && hostAware.Host() != nil {
+		shared := &sdk.RuntimeStateClient{Host: hostAware.Host()}
+		readyCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, _, _, err := shared.Get(readyCtx, "readiness")
+		cancel()
+		if err != nil {
+			return fmt.Errorf("Core runtime state unavailable: %w", err)
+		}
+		g.oauthStore.shared = shared
+	}
 	g.client = &http.Client{
 		Timeout: 720 * time.Second,
 		Transport: &http.Transport{
@@ -61,6 +73,10 @@ func (g *KiroGateway) Init(ctx sdk.PluginContext) error {
 	g.oauthStore.startCleanup(cleanupCtx)
 
 	g.callbackLn = newCallbackListener(g.logger)
+	g.callbackLn.shared = g.oauthStore.shared
+	g.callbackLn.binding = sdk.GetRuntimeContext(ctx).Callbacks["oauth"]
+	// Automatic capture is optional; manual callback entry remains available
+	// when the fixed port is occupied, without disabling gateway requests.
 	g.callbackLn.start()
 
 	g.logger.Info("kiro gateway initialized", "kiro_version", g.headerCfg.KiroVersion)
@@ -722,7 +738,6 @@ func formatUsageNumber(n float64) string {
 	}
 	return strconv.FormatFloat(n, 'f', 2, 64)
 }
-
 
 func cloneStringMap(input map[string]string) map[string]string {
 	cloned := make(map[string]string, len(input))

@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	sdk "github.com/DevilGenius/airgate-sdk/sdkgo"
 	"io"
 	"log/slog"
 	"net"
@@ -22,8 +23,8 @@ const (
 	kiroSignInURL        = "https://app.kiro.dev/signin"
 	kiroTokenExchangeURL = "https://prod.us-east-1.auth.desktop.kiro.dev/oauth/token"
 	kiroCallbackBaseURL  = "http://localhost:3128"
-	idcCallbackBaseURL = "http://127.0.0.1:3128"
-	idcClientName   = "airgate-kiro"
+	idcCallbackBaseURL   = "http://127.0.0.1:3128"
+	idcClientName        = "airgate-kiro"
 
 	oauthSessionTTL = 30 * time.Minute
 )
@@ -51,6 +52,7 @@ type OAuthSession struct {
 
 // oauthSessionStore 内存中的 OAuth 会话存储。
 type oauthSessionStore struct {
+	shared   sdk.RuntimeState
 	mu       sync.Mutex
 	sessions map[string]*OAuthSession // sessionID -> session
 }
@@ -61,7 +63,18 @@ func newOAuthSessionStore() *oauthSessionStore {
 	}
 }
 
-func (s *oauthSessionStore) put(sessionID string, sess *OAuthSession) {
+func (s *oauthSessionStore) put(sessionID string, sess *OAuthSession) error {
+	if s.shared != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := s.shared.Store(ctx, "oauth:session:"+sessionID, sess); err != nil {
+			return err
+		}
+		if sess.State != "" {
+			return s.shared.Store(ctx, "oauth:index:"+sess.State, sessionID)
+		}
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sessions[sessionID] = sess
@@ -72,9 +85,17 @@ func (s *oauthSessionStore) put(sessionID string, sess *OAuthSession) {
 			delete(s.sessions, k)
 		}
 	}
+	return nil
 }
 
 func (s *oauthSessionStore) get(sessionID string) (*OAuthSession, bool) {
+	if s.shared != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		var sess OAuthSession
+		found, err := s.shared.Load(ctx, "oauth:session:"+sessionID, &sess)
+		return &sess, found && err == nil && time.Since(sess.CreatedAt) <= oauthSessionTTL
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[sessionID]
@@ -86,12 +107,21 @@ func (s *oauthSessionStore) get(sessionID string) (*OAuthSession, bool) {
 }
 
 func (s *oauthSessionStore) remove(sessionID string) {
+	if s.shared != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_ = s.shared.Delete(ctx, "oauth:session:"+sessionID)
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, sessionID)
 }
 
 func (s *oauthSessionStore) startCleanup(ctx context.Context) {
+	if s.shared != nil {
+		return
+	}
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
@@ -114,6 +144,17 @@ func (s *oauthSessionStore) startCleanup(ctx context.Context) {
 }
 
 func (s *oauthSessionStore) findByState(state string) (string, *OAuthSession, bool) {
+	if s.shared != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		var id string
+		found, err := s.shared.Load(ctx, "oauth:index:"+state, &id)
+		if err != nil || !found {
+			return "", nil, false
+		}
+		sess, ok := s.get(id)
+		return id, sess, ok
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now()
@@ -141,10 +182,10 @@ type ExchangeCallbackResponse struct {
 	Credentials map[string]string `json:"credentials,omitempty"`
 	Email       string            `json:"email,omitempty"`
 	// BuilderID 设备授权续接
-	Continuation        bool   `json:"-"`
-	VerificationURI     string `json:"-"`
-	UserCode            string `json:"-"`
-	DeviceSessionID     string `json:"-"`
+	Continuation    bool   `json:"-"`
+	VerificationURI string `json:"-"`
+	UserCode        string `json:"-"`
+	DeviceSessionID string `json:"-"`
 }
 
 // generateAuthURL 生成 Kiro OAuth 授权链接。
@@ -164,11 +205,13 @@ func generateAuthURL(store *oauthSessionStore) (*GenerateAuthURLResponse, error)
 
 	codeChallenge := computeS256Challenge(codeVerifier)
 
-	store.put(sessionID, &OAuthSession{
+	if err := store.put(sessionID, &OAuthSession{
 		State:        state,
 		CodeVerifier: codeVerifier,
 		CreatedAt:    time.Now(),
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	params := url.Values{
 		"state":                 {state},
@@ -347,14 +390,16 @@ func startBuilderIDContinuation(ctx context.Context, store *oauthSessionStore, q
 	}
 
 	sessionID := "idc-device-" + deviceResp.UserCode
-	store.put(sessionID, &OAuthSession{
+	if err := store.put(sessionID, &OAuthSession{
 		CreatedAt:    time.Now(),
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		IDCRegion:    idcRegion,
 		IssuerURL:    issuerURL,
 		DeviceCode:   deviceResp.DeviceCode,
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	verificationURI := deviceResp.VerificationURIComplete
 	if verificationURI == "" {
@@ -699,6 +744,8 @@ func computeS256Challenge(verifier string) string {
 
 // callbackListener 在 localhost:3128 监听 OAuth 回调，自动捕获授权码。
 type callbackListener struct {
+	shared   sdk.RuntimeState
+	binding  sdk.CallbackBinding
 	logger   *slog.Logger
 	server   *http.Server
 	running  bool
@@ -713,6 +760,13 @@ func newCallbackListener(logger *slog.Logger) *callbackListener {
 func (cl *callbackListener) start() bool {
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
+	if cl.shared != nil {
+		cl.running = cl.binding.Available
+		if !cl.running {
+			cl.logger.Warn("automatic callback unavailable", "reason", cl.binding.Error)
+		}
+		return cl.running
+	}
 	if cl.running {
 		return true
 	}
@@ -746,6 +800,9 @@ func (cl *callbackListener) start() bool {
 }
 
 func (cl *callbackListener) stop() {
+	if cl.shared != nil {
+		return
+	}
 	cl.mu.Lock()
 	defer cl.mu.Unlock()
 	if !cl.running || cl.server == nil {
@@ -778,6 +835,12 @@ func (cl *callbackListener) handleCallback(w http.ResponseWriter, r *http.Reques
 }
 
 func (cl *callbackListener) getResult(state string) (string, bool) {
+	if cl.shared != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		value, found, err := cl.shared.Take(ctx, "oauth:callback:"+state)
+		return value, found && err == nil
+	}
 	val, ok := cl.captured.LoadAndDelete(state)
 	if !ok {
 		return "", false
